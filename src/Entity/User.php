@@ -2,10 +2,12 @@
 
 namespace App\Entity;
 
-use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use App\Repository\UserRepository;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
@@ -31,6 +33,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column]
     private ?string $password = null;
+
+    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'user')]
+    private Collection $Clips;
 
     public function getId(): ?int
     {
@@ -111,5 +116,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function eraseCredentials(): void
     {
         // @deprecated, to be removed when upgrading to Symfony 8
+    }
+
+    public function addClip(Clip $clip): static
+    {
+        if (!$this->clips->contains($clip)) {
+            $this->clips->add($clip);
+            $user->setClip($this);
+        }
+
+        return $this;
+    }
+
+    public function removeClip(Clip $clip): static
+    {
+        if ($this->users->removeElement($clip)) {
+            // set the owning side to null (unless already changed)
+            if ($clip->getClip() === $this) {
+                $clip->setClip(null);
+            }
+        }
+
+        return $this;
     }
 }
