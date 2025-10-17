@@ -2,14 +2,14 @@
 
 namespace App\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
 use App\Repository\ClipRepository;
-use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
-use Doctrine\Common\Collections\ArrayCollection;
 use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ClipRepository::class)]
+#[Vich\Uploadable]
 class Clip
 {
     #[ORM\Id]
@@ -20,33 +20,25 @@ class Clip
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    /**
-     * @var Collection<int, User>
-     */
     #[ORM\ManyToOne(inversedBy: 'clips')]
     private ?User $user = null;
+
+    #[ORM\ManyToOne(inversedBy: 'clips')]
+    private ?Streamer $streamer = null;
 
     #[Vich\UploadableField(mapping: 'video_file', fileNameProperty: 'videoName')]
     #[Assert\File(
         maxSize: '500M',
-        mimeTypes: [
-            'video/mp4',
-            'video/mpeg',
-            'video/quicktime',
-            'video/x-msvideo',
-            'video/x-ms-wmv',
-        ],
+        mimeTypes: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv'],
         mimeTypesMessage: 'Veuillez uploader une vidéo valide (MP4, AVI, MOV, etc.)'
     )]
     private ?File $videoFile = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $videoName = null;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
-
-    public function __construct()
-    {
-        $this->users = new ArrayCollection();
-    }
 
     public function getId(): ?int
     {
@@ -61,21 +53,29 @@ class Clip
     public function setName(string $name): static
     {
         $this->name = $name;
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, User>
-     */
-    public function getUser(): Collection
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(User $user): void
+    public function setUser(?User $user): static
     {
         $this->user = $user;
+        return $this;
+    }
+
+    public function getStreamer(): ?Streamer
+    {
+        return $this->streamer;
+    }
+
+    public function setStreamer(?Streamer $streamer): static
+    {
+        $this->streamer = $streamer;
+        return $this;
     }
 
     public function getVideoFile(): ?File
@@ -90,6 +90,16 @@ class Clip
         if ($videoFile !== null) {
             $this->updatedAt = new \DateTimeImmutable();
         }
+    }
+
+    public function getVideoName(): ?string
+    {
+        return $this->videoName;
+    }
+
+    public function setVideoName(?string $videoName): void
+    {
+        $this->videoName = $videoName;
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable

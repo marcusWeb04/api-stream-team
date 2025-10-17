@@ -2,18 +2,20 @@
 
 namespace App\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
-use Doctrine\Common\Collections\Collection;
-use Symfony\Component\HttpFoundation\File\File;
 use Doctrine\Common\Collections\ArrayCollection;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
-#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
+#[ORM\InheritanceType("JOINED")]
+#[ORM\DiscriminatorColumn(name: "discr", type: "string")]
+#[ORM\DiscriminatorMap(["user" => User::class, "streamer" => Streamer::class])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -24,19 +26,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180)]
     private ?string $email = null;
 
-    /**
-     * @var list<string> The user roles
-     */
     #[ORM\Column]
     private array $roles = [];
 
-    /**
-     * @var string The hashed password
-     */
     #[ORM\Column]
     private ?string $password = null;
 
-    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'user')]
+    #[ORM\OneToMany(targetEntity: Clip::class, mappedBy: 'user')]
     private Collection $clips;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -48,135 +44,131 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    public function getId(): ?int
+    #[ORM\ManyToMany(targetEntity: Streamer::class, mappedBy: 'followers')]
+    private Collection $streamers;
+
+    public function __construct()
     {
-        return $this->id;
+        $this->clips = new ArrayCollection();
+        $this->streamers = new ArrayCollection();
     }
 
-    public function getEmail(): ?string
-    {
-        return $this->email;
+    public function getId(): ?int 
+    { 
+        return $this->id; 
+    }
+
+    public function getEmail(): ?string 
+    { 
+        return $this->email; 
     }
 
     public function setEmail(string $email): static
     {
         $this->email = $email;
-
         return $this;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
-    public function getUserIdentifier(): string
-    {
-        return (string) $this->email;
+    public function getUserIdentifier(): string 
+    { 
+        return (string) $this->email; 
     }
 
-    /**
-     * @see UserInterface
-     */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
-
         return array_unique($roles);
     }
 
-    /**
-     * @param list<string> $roles
-     */
     public function setRoles(array $roles): static
     {
         $this->roles = $roles;
-
         return $this;
     }
 
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
-    public function getPassword(): ?string
-    {
-        return $this->password;
-    }
+    public function getPassword(): ?string { return $this->password; }
 
     public function setPassword(string $password): static
     {
         $this->password = $password;
-
         return $this;
     }
 
-    /**
-     * Ensure the session doesn't contain actual password hashes by CRC32C-hashing them, as supported since Symfony 7.3.
-     */
-    public function __serialize(): array
-    {
-        $data = (array) $this;
-        $data["\0".self::class."\0password"] = hash('crc32c', $this->password);
-
-        return $data;
-    }
+    public function eraseCredentials(): void {}
 
     public function setImageFile(?File $imageFile = null): void
     {
         $this->imageFile = $imageFile;
-
         if ($imageFile !== null) {
             $this->updatedAt = new \DateTimeImmutable();
         }
     }
 
-    public function getImageFile(): ?File
-    {
-        return $this->imageFile;
+    public function getImageFile(): ?File { 
+        return $this->imageFile; 
     }
 
-    public function setImageName(?string $imageName): void
-    {
-        $this->imageName = $imageName;
+    public function setImageName(?string $imageName): void 
+    { 
+        $this->imageName = $imageName; 
     }
 
-    public function getImageName(): ?string
-    {
-        return $this->imageName;
+    public function getImageName(): ?string 
+    { 
+        return $this->imageName; 
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updatedAt;
+    public function getUpdatedAt(): ?\DateTimeImmutable 
+    { 
+        return $this->updatedAt; 
     }
 
-    #[\Deprecated]
-    public function eraseCredentials(): void
-    {
-        // @deprecated, to be removed when upgrading to Symfony 8
+    /** @return Collection<int, Clip> */
+    public function getClips(): Collection 
+    { 
+        return $this->clips; 
     }
 
     public function addClip(Clip $clip): static
     {
         if (!$this->clips->contains($clip)) {
             $this->clips->add($clip);
-            $user->setClip($this);
+            $clip->setUser($this);
         }
-
         return $this;
     }
 
     public function removeClip(Clip $clip): static
     {
-        if ($this->users->removeElement($clip)) {
-            // set the owning side to null (unless already changed)
-            if ($clip->getClip() === $this) {
-                $clip->setClip(null);
+        if ($this->clips->removeElement($clip)) {
+            if ($clip->getUser() === $this) {
+                $clip->setUser(null);
             }
         }
+        return $this;
+    }
 
+    /** @return Collection<int, Streamer> */
+    public function getStreamers(): Collection 
+    { 
+        return $this->streamers; 
+    }
+
+    public function addStreamer(Streamer $streamer): static
+    {
+        if (!$this->streamers->contains($streamer)) {
+            $this->streamers->add($streamer);
+            $streamer->addFollower($this);
+        }
+        return $this;
+    }
+
+    public function removeStreamer(Streamer $streamer): static
+    {
+        if ($this->streamers->removeElement($streamer)) {
+            $streamer->removeFollower($this);
+        }
         return $this;
     }
 }

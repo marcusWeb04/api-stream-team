@@ -21,10 +21,7 @@ class StudioGame
     #[ORM\Column(length: 255)]
     private ?string $description = null;
 
-    /**
-     * @var Collection<int, Game>
-     */
-    #[ORM\ManyToMany(targetEntity: Game::class, mappedBy: 'StudioGame')]
+    #[ORM\ManyToMany(targetEntity: Game::class, mappedBy: 'studioGames')]
     private Collection $games;
 
     public function __construct()
@@ -32,41 +29,37 @@ class StudioGame
         $this->games = new ArrayCollection();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
+    public function getId(): ?int 
+    { 
+        return $this->id; 
     }
 
-    public function getName(): ?string
-    {
-        return $this->name;
+    public function getName(): ?string 
+    { 
+        return $this->name; 
     }
 
     public function setName(string $name): static
     {
         $this->name = $name;
-
         return $this;
     }
 
-    public function getDescription(): ?string
-    {
-        return $this->description;
+    public function getDescription(): ?string 
+    { 
+        return $this->description; 
     }
 
     public function setDescription(string $description): static
     {
         $this->description = $description;
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, Game>
-     */
-    public function getGames(): Collection
-    {
-        return $this->games;
+    /** @return Collection<int, Game> */
+    public function getGames(): Collection 
+    { 
+        return $this->games; 
     }
 
     public function addGame(Game $game): static
@@ -75,7 +68,6 @@ class StudioGame
             $this->games->add($game);
             $game->addStudioGame($this);
         }
-
         return $this;
     }
 
@@ -84,7 +76,6 @@ class StudioGame
         if ($this->games->removeElement($game)) {
             $game->removeStudioGame($this);
         }
-
         return $this;
     }
 }
